@@ -10,7 +10,7 @@ const con = mysql.createConnection({
 
 con.connect(function (err) {
   if (err) throw err;
-  logger.info(`DB connected`);
+  logger.info("DB connected");
 });
 
 module.exports = con;

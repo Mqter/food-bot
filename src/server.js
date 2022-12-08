@@ -6,9 +6,7 @@ const { bottender } = require("bottender");
 const { TELEGRAM_ACCESS_TOKEN, PORT } = process.env;
 const { logger } = require("./log");
 
-
 const server = express();
-const dbConnect = require("./db_connection");
 const verify = (req, _, buf) => {
   req.rawBody = buf.toString();
 };
@@ -39,7 +37,7 @@ ngrok
         });
         client
           .setWebhook(url + "/webhooks/telegram")
-          .then(() => logger.info(`set webhook success`))
+          .then(() => logger.info("set webhook success"))
           .catch((reason) => logger.error(`set webhook error: ${reason}`));
       });
     });

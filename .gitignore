@@ -1,4 +1,5 @@
 # Logs
+.sessions/
 .idea
 logs
 *.log
