@@ -27,7 +27,7 @@ const showKeyboard = async function (context) {
   const mainMenuMap = new Map();
   const categories = await sqlRequest("SELECT * FROM stud761.product_category");
   categories.forEach((value) => {
-    mainMenuMap.set(value.id, value.name);
+    mainMenuMap.set(TypesEnum.MENU_1 + value.id, value.name);
   });
   const mainMenu = keyboard.menuBuilder(mainMenuMap);
   await context.setState({
@@ -44,9 +44,9 @@ const answerKeyboard = async function (context) {
     await endEvent(context);
   } else if (callbackData === "add") {
     await addEvent(context);
-  } else if (previousEvent === TypesEnum.MENU_1) {
+  } else if (callbackData.includes(TypesEnum.MENU_1)) {
     await menu_1(context, callbackData);
-  } else if (previousEvent === TypesEnum.MENU_2) {
+  } else if (callbackData.includes(TypesEnum.MENU_2)) {
     await menu_2(context, callbackData);
   }
 };
@@ -79,10 +79,32 @@ async function endEvent_2(context) {
 }
 
 async function endEvent_3(context) {
+  const telegramUser = context.event.rawEvent.message.from;
+  const user = await sqlRequest(
+    "SELECT * FROM stud761.user WHERE telegram_uid =" +
+      mysql.escape(telegramUser.id)
+  );
+  const order = {
+    order: JSON.stringify(context.state.order),
+    user: {
+      first_name: telegramUser.firstName,
+      last_name: telegramUser.lastName,
+      phone: null,
+      telegram_uid: telegramUser.id
+    }
+  }
+  if (!user[0]) {
+    const user = await sqlRequest(
+      `INSERT INTO stud761.user (first_name, last_name, phone, telegram_uid) VALUES ("${
+        telegramUser.firstName
+      }", "${telegramUser.lastName}", "${null}", "${telegramUser.id}")`
+    );
+    user.affectedRows === 1 ? await mqttClient.publish("food_bot", Buffer.from(JSON.stringify(order))) : undefined;
+  } else {
+    await mqttClient.publish("food_bot", Buffer.from(JSON.stringify(order)));
+  }
   context.resetState();
   await context.sendText(TypesEnum.ORDERING_MESS_3);
-
-  /*TODO Отправить заказ*/
 }
 
 async function addEvent(context) {
@@ -114,10 +136,10 @@ async function menu_1(context, callbackData) {
   const subMenuMap = new Map();
   const products = await sqlRequest(
     "SELECT * FROM stud761.product WHERE category_id =" +
-      mysql.escape(callbackData)
+      mysql.escape(callbackData.split(TypesEnum.MENU_1)[1])
   );
   products.forEach((value) => {
-    subMenuMap.set(value.id, value.name);
+    subMenuMap.set(TypesEnum.MENU_2 + value.id, value.name);
   });
   const subMenu = keyboard.menuBuilder(subMenuMap);
   await context.sendText(subMenu.text, { replyMarkup: subMenu.replyMarkup });
@@ -129,13 +151,14 @@ async function menu_1(context, callbackData) {
 async function menu_2(context, callbackData) {
   const subMenuMap = new Map();
   const products = await sqlRequest(
-    "SELECT * FROM stud761.product WHERE id =" + mysql.escape(callbackData)
+    "SELECT * FROM stud761.product WHERE id =" +
+      mysql.escape(callbackData.split(TypesEnum.MENU_2)[1])
   );
 
   /*TODO Придумать что-то с отправкой картинок*/
-  await context.sendPhoto(
-    "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png"
-  );
+  // await context.sendPhoto(
+  //   "https://upload.wikimedia.org/wikipedia/commons/4/47/PNG_transparency_demonstration_1.png"
+  // );
 
   const description = `description: ${products[0].description}\nprice: ${products[0].price}\ndiscount: ${products[0].discount}`;
   subMenuMap.set("add", "Добавить");
